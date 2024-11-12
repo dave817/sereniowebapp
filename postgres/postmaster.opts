@@ -1,0 +1,1 @@
+/nix/store/79kr96fdwkhcfifl18s4advyx5pxdz77-postgresql-14.6/bin/postgres "-D" "/home/runner/sereniowebapp/postgres" "-k" "/home/runner/sereniowebapp/run/postgresql"

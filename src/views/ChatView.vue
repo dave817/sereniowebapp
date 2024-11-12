@@ -2,9 +2,12 @@
   <div class="chat">
     <div class="chat-container">
       <div class="messages" ref="messagesContainer">
-        <div v-for="message in messages" :key="message.id" :class="['message', message.isBot ? 'bot' : 'user']">
+        <div v-if="sortedMessages.length === 0" class="empty-state">
+          <p>Start a conversation! Your AI companion is here to listen and support you.</p>
+        </div>
+        <div v-for="message in sortedMessages" :key="message.id" :class="['message', message.isBot ? 'bot' : 'user']">
           <div class="avatar" v-if="message.isBot">
-            <img src="@/assets/bot-avatar.png" alt="Bot Avatar">
+            <img src="../assets/bot-avatar.svg" alt="Bot Avatar">
           </div>
           <div class="message-content">
             <p>{{ message.content }}</p>
@@ -31,21 +34,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
 import { format } from 'date-fns'
+import { useChatStore } from '../stores/chat'
 
-interface Message {
-  id: string
-  content: string
-  isBot: boolean
-  timestamp: Date
-  userId: string
-}
-
-const router = useRouter()
-const messages = ref<Message[]>([])
+const store = useChatStore()
 const messageText = ref('')
-const isLoading = ref(false)
 const messagesContainer = ref<HTMLElement | null>(null)
 
 const formatTime = (date: Date) => {
@@ -60,94 +53,38 @@ const scrollToBottom = async () => {
 }
 
 const sendMessage = async () => {
-  if (!messageText.value.trim() || isLoading.value) return
+  if (!messageText.value.trim() || store.isLoading) return
 
-  const userMessage: Message = {
-    id: Date.now().toString(),
-    content: messageText.value,
-    isBot: false,
-    timestamp: new Date(),
-    userId: localStorage.getItem('userId') || ''
-  }
-
-  messages.value.push(userMessage)
   const currentMessage = messageText.value
   messageText.value = ''
-  isLoading.value = true
 
   try {
-    await scrollToBottom()
-
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify({
-        message: currentMessage,
-        userId: userMessage.userId
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to get response')
-    }
-
-    const data = await response.json()
-    
-    const botMessage: Message = {
-      id: Date.now().toString(),
-      content: data.response,
-      isBot: true,
-      timestamp: new Date(),
-      userId: userMessage.userId
-    }
-
-    messages.value.push(botMessage)
+    await store.sendMessage(currentMessage)
     await scrollToBottom()
   } catch (error) {
     console.error('Chat error:', error)
     alert('Failed to send message. Please try again.')
-  } finally {
-    isLoading.value = false
   }
 }
 
-const loadMessages = async () => {
+onMounted(async () => {
   try {
-    const response = await fetch('/api/messages', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to load messages')
-    }
-
-    const data = await response.json()
-    messages.value = data.messages
+    await store.loadMessages()
     await scrollToBottom()
   } catch (error) {
     console.error('Error loading messages:', error)
-    alert('Failed to load message history')
   }
-}
-
-onMounted(() => {
-  if (!localStorage.getItem('token')) {
-    router.push('/login')
-    return
-  }
-  loadMessages()
 })
+
+// Use store's state
+const { sortedMessages, isLoading } = store
 </script>
 
 <style scoped>
 .chat {
   height: calc(100vh - 140px);
   padding: 20px;
+  background: #f5f7fa;
 }
 
 .chat-container {
@@ -167,6 +104,16 @@ onMounted(() => {
   padding: 20px;
   display: flex;
   flex-direction: column;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  text-align: center;
+  padding: 2rem;
 }
 
 .message {
@@ -195,6 +142,8 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   border-radius: 50%;
+  background: #f0f2f5;
+  padding: 5px;
 }
 
 .message-content {
@@ -212,6 +161,7 @@ onMounted(() => {
 .message-content p {
   margin: 0;
   line-height: 1.4;
+  white-space: pre-wrap;
 }
 
 .timestamp {
@@ -230,6 +180,9 @@ onMounted(() => {
   border-top: 1px solid #eee;
   display: flex;
   gap: 10px;
+  background: white;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 
 textarea {
@@ -240,6 +193,12 @@ textarea {
   resize: none;
   height: 50px;
   font-family: inherit;
+  font-size: 1rem;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #42b983;
 }
 
 button {
@@ -250,6 +209,7 @@ button {
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.3s;
+  font-size: 1rem;
 }
 
 button:hover:not(:disabled) {
@@ -259,5 +219,15 @@ button:hover:not(:disabled) {
 button:disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .chat {
+    padding: 10px;
+  }
+
+  .message {
+    max-width: 90%;
+  }
 }
 </style>

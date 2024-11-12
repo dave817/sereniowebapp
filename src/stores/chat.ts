@@ -6,8 +6,12 @@ interface Message {
   content: string
   isBot: boolean
   timestamp: Date
-  userId: string
+  userId?: string
 }
+
+const API_BASE = process.env.REPL_ID 
+  ? 'https://sereniowebapp--david1049.repl.co'
+  : 'http://localhost:3001'
 
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<Message[]>([])
@@ -25,14 +29,7 @@ export const useChatStore = defineStore('chat', () => {
     error.value = null
 
     try {
-      const token = localStorage.getItem('token')
-      if (!token) throw new Error('No authentication token')
-
-      const response = await fetch('/api/chat/messages', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await fetch(`${API_BASE}/api/chat/messages`)
 
       if (!response.ok) {
         throw new Error('Failed to load messages')
@@ -56,14 +53,19 @@ export const useChatStore = defineStore('chat', () => {
     error.value = null
 
     try {
-      const token = localStorage.getItem('token')
-      if (!token) throw new Error('No authentication token')
+      // Add user message immediately
+      const userMessage = {
+        id: Date.now().toString(),
+        content,
+        isBot: false,
+        timestamp: new Date()
+      }
+      messages.value.unshift(userMessage)
 
-      const response = await fetch('/api/chat', {
+      const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ message: content })
       })
@@ -74,20 +76,20 @@ export const useChatStore = defineStore('chat', () => {
 
       const data = await response.json()
       
-      // Add both user message and bot response to the messages array
-      messages.value.unshift({
-        ...data.userMessage,
-        timestamp: new Date(data.userMessage.timestamp)
-      })
-      
-      messages.value.unshift({
-        ...data.botMessage,
-        timestamp: new Date(data.botMessage.timestamp)
-      })
+      // Add bot response
+      const botMessage = {
+        id: (Date.now() + 1).toString(),
+        content: data.response,
+        isBot: true,
+        timestamp: new Date()
+      }
+      messages.value.unshift(botMessage)
 
-      return data.botMessage.content
+      return data.response
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to send message'
+      // Remove the user message if there was an error
+      messages.value = messages.value.filter(msg => msg.content !== content)
       throw error.value
     } finally {
       isLoading.value = false

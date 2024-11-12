@@ -1,5 +1,5 @@
-run = "npm run dev"
-hidden = [".build", ".config"]
+run = "npm install && npm run build && npm run dev"
+hidden = [".build", ".config", "postgres_data"]
 
 [nix]
 channel = "stable-22_11"
@@ -23,5 +23,29 @@ pattern = "**/{*.js,*.jsx,*.ts,*.tsx}"
 start = [ "typescript-language-server", "--stdio" ]
 
 [deployment]
-run = ["sh", "-c", "npm run dev"]
+run = "npm install && npm run build && npm run dev"
 deploymentTarget = "cloudrun"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
+[[ports]]
+localPort = 3002
+externalPort = 3002
+
+[[ports]]
+localPort = 3003
+externalPort = 3003
+
+[[ports]]
+localPort = 3004
+externalPort = 4200
+
+[[ports]]
+localPort = 24678
+externalPort = 3000

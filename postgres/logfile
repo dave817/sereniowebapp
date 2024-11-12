@@ -1,0 +1,38 @@
+2024-11-12 08:31:04.365 UTC [7938] LOG:  starting PostgreSQL 14.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 11.3.0, 64-bit
+2024-11-12 08:31:04.375 UTC [7938] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2024-11-12 08:31:04.390 UTC [7938] LOG:  listening on Unix socket "/home/runner/sereniowebapp/run/postgresql/.s.PGSQL.5432"
+2024-11-12 08:31:04.399 UTC [7939] LOG:  database system was shut down at 2024-11-12 08:31:00 UTC
+2024-11-12 08:31:04.406 UTC [7938] LOG:  database system is ready to accept connections
+2024-11-12 14:53:43.461 UTC [5008] LOG:  starting PostgreSQL 14.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 11.3.0, 64-bit
+2024-11-12 14:53:43.465 UTC [5008] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2024-11-12 14:53:43.475 UTC [5008] LOG:  listening on Unix socket "/home/runner/sereniowebapp/run/postgresql/.s.PGSQL.5432"
+2024-11-12 14:53:43.485 UTC [5009] LOG:  database system was interrupted; last known up at 2024-11-12 08:36:14 UTC
+2024-11-12 14:53:43.685 UTC [5009] LOG:  database system was not properly shut down; automatic recovery in progress
+2024-11-12 14:53:43.710 UTC [5009] LOG:  redo starts at 0/17297C0
+2024-11-12 14:53:43.710 UTC [5009] LOG:  invalid record length at 0/17298A8: wanted 24, got 0
+2024-11-12 14:53:43.710 UTC [5009] LOG:  redo done at 0/1729870 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2024-11-12 14:53:43.744 UTC [5008] LOG:  database system is ready to accept connections
+2024-11-12 14:53:45.859 UTC [5036] ERROR:  database "serenio" already exists
+2024-11-12 14:53:45.859 UTC [5036] STATEMENT:  CREATE DATABASE serenio;
+2024-11-12 14:54:06.209 UTC [5362] FATAL:  lock file "postmaster.pid" already exists
+2024-11-12 14:54:06.209 UTC [5362] HINT:  Is another postmaster (PID 5008) running in data directory "/home/runner/sereniowebapp/postgres"?
+2024-11-12 14:54:08.318 UTC [5365] ERROR:  database "serenio" already exists
+2024-11-12 14:54:08.318 UTC [5365] STATEMENT:  CREATE DATABASE serenio;
+2024-11-12 14:55:41.257 UTC [6065] FATAL:  lock file "postmaster.pid" already exists
+2024-11-12 14:55:41.257 UTC [6065] HINT:  Is another postmaster (PID 5008) running in data directory "/home/runner/sereniowebapp/postgres"?
+2024-11-12 14:55:43.329 UTC [6116] ERROR:  database "serenio" already exists
+2024-11-12 14:55:43.329 UTC [6116] STATEMENT:  CREATE DATABASE serenio;
+2024-11-12 14:58:32.988 UTC [6758] FATAL:  lock file "postmaster.pid" already exists
+2024-11-12 14:58:32.988 UTC [6758] HINT:  Is another postmaster (PID 5008) running in data directory "/home/runner/sereniowebapp/postgres"?
+2024-11-12 14:58:35.123 UTC [6779] ERROR:  database "serenio" already exists
+2024-11-12 14:58:35.123 UTC [6779] STATEMENT:  CREATE DATABASE serenio;
+2024-11-12 15:08:04.141 UTC [8953] FATAL:  lock file "postmaster.pid" already exists
+2024-11-12 15:08:04.141 UTC [8953] HINT:  Is another postmaster (PID 5008) running in data directory "/home/runner/sereniowebapp/postgres"?
+2024-11-12 15:08:06.199 UTC [8956] ERROR:  database "serenio" already exists
+2024-11-12 15:08:06.199 UTC [8956] STATEMENT:  CREATE DATABASE serenio;
+2024-11-12 15:11:17.946 UTC [5008] LOG:  received smart shutdown request
+2024-11-12 15:11:17.980 UTC [5008] LOG:  background worker "logical replication launcher" (PID 5015) exited with exit code 1
+2024-11-12 15:11:17.980 UTC [5010] LOG:  shutting down
+2024-11-12 15:11:18.004 UTC [9599] FATAL:  lock file "postmaster.pid" already exists
+2024-11-12 15:11:18.004 UTC [9599] HINT:  Is another postmaster (PID 5008) running in data directory "/home/runner/sereniowebapp/postgres"?
+2024-11-12 15:11:18.055 UTC [5008] LOG:  database system is shut down

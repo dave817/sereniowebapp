@@ -1,91 +1,135 @@
 import express from 'express'
 import dotenv from 'dotenv'
-import { Pool } from 'pg'
+import pkg from 'pg'
+const { Pool } = pkg
 import cors from 'cors'
-import authRoutes from './routes/auth'
-import chatRoutes from './routes/chat'
-import { createServer } from 'vite'
+import chatRoutes from './routes/chat.ts'
 import { fileURLToPath } from 'url'
-import { dirname, resolve } from 'path'
+import { dirname } from 'path'
 
 dotenv.config()
 
 const app = express()
-const port = process.env.PORT || 3000
+const port = parseInt(process.env.PORT || '3001', 10)
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // Database setup
-export const pool = new Pool({
+const dbConfig = {
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : undefined
-})
-
-// Middleware
-app.use(cors())
-app.use(express.json())
-
-// API Routes
-app.use('/api/auth', authRoutes)
-app.use('/api/chat', chatRoutes)
-
-// Vite integration for development
-if (process.env.NODE_ENV !== 'production') {
-  const vite = await createServer({
-    root: resolve(__dirname, '..'),
-    server: {
-      middlewareMode: true
-    }
-  })
-  app.use(vite.middlewares)
-} else {
-  // Serve static files in production
-  app.use(express.static(resolve(__dirname, '../dist')))
-  app.get('*', (req, res) => {
-    res.sendFile(resolve(__dirname, '../dist/index.html'))
-  })
+  ssl: false
 }
 
+console.log('Database config:', { ...dbConfig, connectionString: '[REDACTED]' })
+
+export const pool = new Pool(dbConfig)
+
+// Initialize database
+async function initDb() {
+  let retries = 5
+  while (retries > 0) {
+    try {
+      await pool.query('SELECT NOW()')
+      console.log('Database connection successful')
+      
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS messages (
+          id SERIAL PRIMARY KEY,
+          content TEXT NOT NULL,
+          is_bot BOOLEAN DEFAULT false,
+          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
+      `)
+      console.log('Database initialized successfully')
+      return
+    } catch (error) {
+      console.error(`Database initialization error (${retries} retries left):`, error)
+      retries--
+      if (retries === 0) {
+        throw error
+      }
+      // Wait 2 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000))
+    }
+  }
+}
+
+// Middleware
+app.use(cors({
+  origin: true,
+  credentials: true
+}))
+app.use(express.json())
+
+// Health check endpoint
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' })
+})
+
+// API Routes
+app.use('/api/chat', chatRoutes)
+
 // Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err.stack)
   res.status(500).json({ message: 'Something went wrong!' })
 })
 
-// Initialize database
-async function initDb() {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+let server: any = null
 
-      CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        content TEXT NOT NULL,
-        is_bot BOOLEAN DEFAULT false,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `)
-    console.log('Database initialized successfully')
+// Start server
+async function startServer() {
+  try {
+    await initDb()
+    
+    server = app.listen(port, '0.0.0.0', () => {
+      console.log(`Server running on port ${port}`)
+    })
+
+    server.on('error', (error: any) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${port} is already in use`)
+        process.exit(1)
+      } else {
+        console.error('Server error:', error)
+        process.exit(1)
+      }
+    })
   } catch (error) {
-    console.error('Database initialization error:', error)
+    console.error('Server startup error:', error)
     process.exit(1)
   }
 }
 
-// Start server
-async function startServer() {
-  await initDb()
-  app.listen(port, () => {
-    console.log(`Server running on port ${port}`)
-  })
-}
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server')
+  if (server) {
+    server.close(() => {
+      console.log('HTTP server closed')
+      pool.end(() => {
+        console.log('Database connection pool closed')
+        process.exit(0)
+      })
+    })
+  }
+})
 
-startServer().catch(console.error)
+process.on('SIGINT', () => {
+  console.log('SIGINT signal received: closing HTTP server')
+  if (server) {
+    server.close(() => {
+      console.log('HTTP server closed')
+      pool.end(() => {
+        console.log('Database connection pool closed')
+        process.exit(0)
+      })
+    })
+  }
+})
+
+startServer().catch(error => {
+  console.error('Fatal error:', error)
+  process.exit(1)
+})

@@ -1,52 +1,53 @@
 #!/bin/bash
 
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+# Create necessary directories
+mkdir -p /home/runner/${REPL_SLUG}/postgres
+mkdir -p /home/runner/${REPL_SLUG}/run/postgresql
 
-echo -e "${BLUE}Starting Serenio Web setup...${NC}\n"
+# Kill existing PostgreSQL process if any
+pkill -f postgres
 
-# Check if Node.js is installed
-if ! command -v node &> /dev/null; then
-    echo -e "${RED}Node.js is not installed. Please install Node.js version 18 or higher.${NC}"
-    exit 1
-fi
+# Initialize PostgreSQL database
+initdb -D /home/runner/${REPL_SLUG}/postgres
 
-# Check if npm is installed
-if ! command -v npm &> /dev/null; then
-    echo -e "${RED}npm is not installed. Please install npm.${NC}"
-    exit 1
-fi
+# Modify postgresql.conf
+echo "unix_socket_directories = '/home/runner/${REPL_SLUG}/run/postgresql'" >> /home/runner/${REPL_SLUG}/postgres/postgresql.conf
+echo "listen_addresses = '*'" >> /home/runner/${REPL_SLUG}/postgres/postgresql.conf
+echo "port = 5432" >> /home/runner/${REPL_SLUG}/postgres/postgresql.conf
 
-# Install dependencies
-echo -e "${BLUE}Installing dependencies...${NC}"
-npm install
+# Update pg_hba.conf to allow local connections
+echo "local   all             all                                     trust" > /home/runner/${REPL_SLUG}/postgres/pg_hba.conf
+echo "host    all             all             127.0.0.1/32            trust" >> /home/runner/${REPL_SLUG}/postgres/pg_hba.conf
+echo "host    all             all             ::1/128                 trust" >> /home/runner/${REPL_SLUG}/postgres/pg_hba.conf
 
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Failed to install dependencies.${NC}"
-    exit 1
-fi
+# Start PostgreSQL
+pg_ctl -D /home/runner/${REPL_SLUG}/postgres -l /home/runner/${REPL_SLUG}/postgres/logfile -o "-k /home/runner/${REPL_SLUG}/run/postgresql" start
 
-# Check if .env file exists
-if [ ! -f .env ]; then
-    echo -e "${BLUE}Creating .env file...${NC}"
-    cp .env.example .env
-    echo -e "${GREEN}Created .env file. Please update it with your configuration.${NC}"
-fi
+# Wait for PostgreSQL to start
+sleep 2
 
-# Initialize database
-echo -e "${BLUE}Initializing database...${NC}"
-npm run init-db
+# Create the database
+createdb -h 127.0.0.1 serenio
 
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Failed to initialize database. Please check your database configuration in .env file.${NC}"
-    exit 1
-fi
+# Initialize the database schema
+psql -h 127.0.0.1 -d serenio -f server/database/init.sql
 
-echo -e "\n${GREEN}Setup completed successfully!${NC}"
-echo -e "${BLUE}Next steps:${NC}"
-echo "1. Update the .env file with your configuration"
-echo "2. Run 'npm run dev' to start the development server"
-echo -e "\n${BLUE}For more information, see the README.md file.${NC}"
+# Update environment variables
+cat > .env << EOL
+DATABASE_URL=postgres://runner:@127.0.0.1:5432/serenio
+OPENAI_API_KEY=${OPENAI_API_KEY}
+BOT_PROMPT="You are great at creating beautiful, high-quality and natural conversation, making the User comfortable and understanding the meaning behind the words of User. You are great at listening deeply to craft responses that echo human empathy. You focus on the main topic brought up by the User, dive deep into it by asking relevant questions, rather than simply catching keywords to generate responses. You must use beautiful words and craft charming sentences to talk with the User. Your name is Serenio in English or 小癒 in Chinese. You must use a friendly tone to talk with the User and use '你' instead of '您' when referring to the User."
+NODE_ENV=development
+PORT=3001
+FRONTEND_PORT=3000
+BACKEND_PORT=3001
+FRONTEND_URL=https://sereniowebapp.david1049.repl.co
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+EOL
+
+# Kill any existing Node.js processes
+pkill -f node
+
+# Wait a moment for processes to clean up
+sleep 2
